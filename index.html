@@ -1,0 +1,81 @@
+<html><title>IndexedDB test for huge wasm</title>
+<script>
+//const filename = "hello_world.wasm";
+const filename = "100000-functions.wasm";
+
+const log = (() => {
+    let time = performance.now();
+    return (message) => {
+        const now = performance.now();
+        if(!message) {
+            time = now;
+            return;
+        }
+        console.log((now - time).toFixed(4) + ": " + message);
+        try {
+            document.getElementById("textarea").value += (now - time).toFixed(4) + ": " + message + "\n";
+        } catch(e) {
+        }
+        time = performance.now();
+    };
+})();
+
+const start = (type) => {
+    log();
+    let url = filename + '?' + Date.now();
+    if(type === 'compileStreaming') {
+        log('compileSteaming start, url = [' + url + ']');
+        WebAssembly.compileStreaming(fetch(url)).then((module) => {
+            log('compileStreaming end, instantiate start');
+            return WebAssembly.instantiate(module);
+        }).then((instance) => {
+            log('instantiate end');
+            log('===============');
+            console.log(instance);
+        });
+    } else if(type === 'instantiateStreaming') {
+        log('instantiateSteaming start, url = [' + url + ']');
+        WebAssembly.instantiateStreaming(fetch(url)).then((instance) => {
+            log('instantiateStreaming end');
+            log('===============');
+            console.log(instance);
+        });
+    } else if(type === 'compile') {
+        log('fetch start, url = [' + url + ']');
+        fetch(url).then((response) => {
+            log('fetch end, arrayBuffer start');
+            return response.arrayBuffer();
+        }).then((bytes) => {
+            log('arrayBuffer end, compile start');
+            return WebAssembly.compile(bytes);
+        }).then((module) => {
+            log('compile end, instantiate start');
+            return WebAssembly.instantiate(module);
+        }).then((instance) => {
+            log('instantiate end');
+            log('===============');
+        });
+    } else if(type === 'instantiate') {
+        log('fetch start, url = [' + url + ']');
+        fetch(url).then((response) => {
+            log('fetch end, arrayBuffer start');
+            return response.arrayBuffer();
+        }).then((bytes) => {
+            log('arrayBuffer end, instantiate start');
+            return WebAssembly.instantiate(bytes);
+        }).then((instance) => {
+            log('instantiate end');
+            log('===============');
+        });
+    }
+};
+
+</script><body>
+<input type="button" onclick="start('compile')" value="compile">
+<input type="button" onclick="start('instantiate')" value="instantiate">
+<br>
+<input type="button" onclick="start('compileStreaming')" value="compileStreaming">
+<input type="button" onclick="start('instantiateStreaming')" value="instantiateStreaming">
+<br>
+<textarea id="textarea" cols="80" rows="25"></textarea>
+</body></html>
